@@ -84,20 +84,18 @@ a.plot()
 plt.grid()
 
 
-## arbitrage payoff
+## stradle payoff
 first_price, last_price = 1650, 1750
 long_call = LongCallPNL(1700, 24.65, first_price, last_price)
-short_call = ShortCallPNL(1700, 32, first_price, last_price)
+long_put = LongPutPNL(1700, 32, first_price, last_price)
 
 long_call.calculate_pnl()
-short_call.calculate_pnl()
+long_put.calculate_pnl()
 
-arbitrage_payoff = long_call + short_call
+stradle = long_call + long_put
 
 long_call.plot()
-
-short_call.plot()
-# arbitrage_payoff.plot()
-
+long_put.plot()
+stradle.plot()
+plt.legend(['long call', 'long put', 'stradle'])
 plt.grid()
-plt.plot(arbitrage_payoff._prices, arbitrage_payoff._profile)
