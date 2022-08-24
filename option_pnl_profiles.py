@@ -6,7 +6,42 @@ first_price, last_price = 1400, 1800
 strike_price = 1600
 premium = 70
 
-class PNL(object):
+class LinearPNL(object):
+    def __init__(self, strike_price, start, end):
+        self._strike = strike_price
+        self._start = start
+        self._end = end
+        self._profile = None
+        self._prices = np.arange(start, end, 1)
+    
+    def plot(self):
+        plt.plot(self._prices, self._profile)
+        
+    def __add__(self, other):
+        if self._start != other._start or self._end != other._end:
+            raise('start and end prices are not same')
+        
+        result = NonLinearPNL(0, 0, self._start, self._end)
+        result._profile = self._profile + other._profile
+        return result
+
+class LongPNL(LinearPNL):
+    def __init__(self, strike_price, start, end):
+        super().__init__(strike_price, start, end)
+    
+    def calculate_pnl(self):
+        self._profile = np.linspace(-(self._strike-self._start), self._end - self._strike, num=len(self._prices))
+
+    
+class ShortPNL(LinearPNL):
+    def __init__(self, strike_price, start, end):
+        super().__init__(strike_price, start, end)
+        
+    def calculate_pnl(self):
+        self._profile = np.linspace(self._strike-self._start, -(self._end - self._strike), num=len(self._prices))
+
+    
+class NonLinearPNL(object):
     def __init__(self, strike_price, premium, start, end):
         self._strike = strike_price
         self._premium = premium
@@ -25,12 +60,11 @@ class PNL(object):
         if self._start != other._start or self._end != other._end:
             raise('start and end prices are not same')
         
-        result = PNL(0, 0, self._start, self._end)
+        result = NonLinearPNL(0, 0, self._start, self._end)
         result._profile = self._profile + other._profile
         return result
-
         
-class CallPNL(PNL):
+class CallPNL(NonLinearPNL):
     def __init__(self, strike_price, premium, start, end):
         super().__init__(strike_price, premium, start, end)
         self._breakeven = strike_price + premium
@@ -54,7 +88,7 @@ class ShortCallPNL(CallPNL):
         self._multiplier = 1
 
         
-class PutPNL(PNL):
+class PutPNL(NonLinearPNL):
     def __init__(self, strike_price, premium, start, end):
         super().__init__(strike_price, premium, start, end)
         self._breakeven = strike_price - premium
@@ -75,8 +109,8 @@ class ShortPutPNL(PutPNL):
     def __init__(self, strike_price, premium, start, end):
         super().__init__(strike_price, premium, start, end)
         self._multiplier = 1
-        
-        
+
+
         
 a = LongCallPNL(strike_price, premium, first_price, last_price)
 a.calculate_pnl()
