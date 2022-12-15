@@ -1,0 +1,5 @@
+class DiscordAgent(object):
+    pass
+
+
+    
