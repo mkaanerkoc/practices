@@ -51,7 +51,7 @@ def prepare_html(table):
             }}
     </style>
     <body>
-        <h2>Daily Market Overview {datetime.today()}</h2>
+        <h2>Daily Market Overview {datetime.today().date()}</h2>
         {table.to_html(classes='tablestyle')}
     </body>
     </html>

@@ -28,7 +28,7 @@ def preprocess_price_data(price_data_raw, base_asset):
 
 
     price_data = price_data.drop(columns=['open_time', 'close_time', 'taker_buy_vol', 
-                                'taker_buy_quote_vol', 'unused'])
+                                'taker_buy_quote_vol', 'volume', 'unused'])
 
     price_data.rename(columns={'quote_volume':'volume'}, inplace=True)
     price_data[['symbol']] = base_asset
@@ -36,14 +36,13 @@ def preprocess_price_data(price_data_raw, base_asset):
 
     return price_data
 
-def remove_missing_symbols(market_prices):
+def remove_missing_symbols(market_prices, min_len):
     """
-    Remove symbols with missing data between start and end date.
+    Remove symbols if they have less then 'min_len' data points
     """
-    start, end = market_prices.index[0], market_prices.index[-1]
-    ref_time = pd.date_range(start, end, freq="1H")
+    
     market_prices = market_prices.groupby("symbol").filter(
-        lambda x: len(x) == len(ref_time)
+        lambda x: len(x) >= min_len
     )
     return market_prices
 
@@ -74,7 +73,7 @@ class AsyncPriceFetcher(object):
             tasks.append(task)
         return await asyncio.gather(*tasks, return_exceptions=False)
 
-    async def fetch(self, symbols, interval, start):
+    async def _fetch(self, symbols, interval, start):
         symbol_prices = []
         # Request price data chunk by chunk
         for index, symbols_in_chunk in enumerate(chunked_iterable(symbols, self.MAX_WORKERS)):
@@ -84,7 +83,19 @@ class AsyncPriceFetcher(object):
             symbol_prices.extend(chunk_results)
 
         market_prices_online = pd.concat(symbol_prices)
-        market_prices_online = remove_missing_symbols(market_prices_online)
+        print(market_prices_online.head())
+        market_prices_online = remove_missing_symbols(market_prices_online, 160)
         market_prices_online.to_csv("data/market_prices.csv")
         return market_prices_online
+    
+    def fetch(self, symbols, interval, start):
+        loop = asyncio.get_event_loop()
+        
+        async def _pipeline():
+            await self._client.create()
+            prices = await self._fetch(symbols, interval, start)
+            await self._client.close_connection()
+            return prices
 
+        results = loop.run_until_complete(_pipeline())
+        return results
